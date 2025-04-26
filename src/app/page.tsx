@@ -1,103 +1,301 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DatePicker } from "@/components/ui/date-picker";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { useOrders } from "@/context/order-context";
+import { useAuthRedirect } from "@/hooks/useAuthRedirect";
+import type { DateRange } from "@/types";
+import { exportToExcel, generateSampleData } from "@/utils/excel-export";
+import { format } from "date-fns";
+import {
+  Download,
+  Edit,
+  FileSpreadsheet,
+  Loader2,
+  Plus,
+  RefreshCw,
+  Search,
+  Trash2,
+} from "lucide-react";
+import Link from "next/link";
+import { useState } from "react";
+
+export default function OrderList() {
+  // Redirect to login if not authenticated
+  useAuthRedirect({ whenUnauthenticated: "/login" });
+
+  const { orders, loading, error, searchOrders, deleteOrder } = useOrders();
+  const [orderNo, setOrderNo] = useState("");
+  const [dateRange, setDateRange] = useState<DateRange>({
+    startDate: null,
+    endDate: null,
+  });
+  const [isExporting, setIsExporting] = useState(false);
+  const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
+
+  const handleSearch = async () => {
+    await searchOrders(orderNo, dateRange);
+  };
+
+  const handleReset = async () => {
+    setOrderNo("");
+    setDateRange({ startDate: null, endDate: null });
+    await searchOrders("", { startDate: null, endDate: null });
+  };
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      await exportToExcel(orders, "orders.xlsx");
+    } catch (error) {
+      console.error("Error exporting to Excel:", error);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleExportSample = async () => {
+    setIsExporting(true);
+    try {
+      const sampleData = generateSampleData(5000);
+      await exportToExcel(sampleData, "sample_orders.xlsx");
+    } catch (error) {
+      console.error("Error exporting sample data:", error);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      setDeletingOrderId(id);
+      await deleteOrder(id);
+    } catch (error) {
+      console.error("Error deleting order:", error);
+    } finally {
+      setDeletingOrderId(null);
+    }
+  };
+
+  const handleReload = async () => {
+    await searchOrders(orderNo, dateRange);
+  };
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <div className="container mx-auto py-4 px-4 sm:py-8">
+      <div className="flex justify-between items-center gap-4 mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold">Orders</h1>
+        <Link href="/orders/new">
+          <Button>
+            <Plus className="mr-2 h-4 w-4" />
+            New Order
+          </Button>
+        </Link>
+      </div>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      <Card className="mb-6 sm:mb-8">
+        <CardHeader>
+          <CardTitle>Search Orders</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium">Order Number</label>
+              <div className="relative">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by order number"
+                  value={orderNo}
+                  onChange={(e) => setOrderNo(e.target.value)}
+                  className="pl-8"
+                />
+              </div>
+            </div>
+            <div>
+              <DatePicker
+                date={dateRange.startDate || undefined}
+                onSelect={(date) =>
+                  setDateRange({ ...dateRange, startDate: date || null })
+                }
+                label="Start Date"
+              />
+            </div>
+            <div>
+              <DatePicker
+                date={dateRange.endDate || undefined}
+                onSelect={(date) =>
+                  setDateRange({ ...dateRange, endDate: date || null })
+                }
+                label="End Date"
+              />
+            </div>
+            <div className="flex items-end gap-2">
+              <Button onClick={handleSearch} className="flex-1">
+                Search
+              </Button>
+              <Button variant="outline" onClick={handleReset}>
+                Reset
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <CardTitle>Order List</CardTitle>
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+            <Button
+              variant="outline"
+              onClick={handleReload}
+              disabled={loading}
+              className="flex-1 sm:flex-none"
+            >
+              {loading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="mr-2 h-4 w-4" />
+              )}
+              Reload
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleExport}
+              disabled={isExporting || orders.length === 0}
+              className="flex-1 sm:flex-none"
+            >
+              {isExporting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="mr-2 h-4 w-4" />
+              )}
+              Export
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleExportSample}
+              disabled={isExporting}
+              className="flex-1 sm:flex-none"
+            >
+              {isExporting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+              )}
+              Sample
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="overflow-x-auto">
+          {loading ? (
+            <div className="flex justify-center items-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : error ? (
+            <div className="text-center py-8 text-red-500">{error}</div>
+          ) : orders.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No orders found. Create a new order to get started.
+            </div>
+          ) : (
+            <div className="rounded-md border overflow-hidden">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Order No</TableHead>
+                      <TableHead>Customer Name</TableHead>
+                      <TableHead>Order Date</TableHead>
+                      <TableHead className="text-right">Grand Total</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {orders.map((order) => (
+                      <TableRow key={order.id}>
+                        <TableCell className="font-medium">
+                          {order.order_no}
+                        </TableCell>
+                        <TableCell>{order.customer_name}</TableCell>
+                        <TableCell>
+                          {format(order.order_date, "dd MMM yyyy")}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          Rp{order.grand_total.toLocaleString("id-ID")}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Link href={`/orders/edit/${order.id}`}>
+                              <Button variant="ghost" size="icon">
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            </Link>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <Trash2 className="h-4 w-4 text-red-500" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent className="max-w-[90vw] sm:max-w-lg">
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>
+                                    Delete Order
+                                  </AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete order{" "}
+                                    {order.order_no}? This action cannot be
+                                    undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDelete(order.id!)}
+                                    className="bg-red-500 hover:bg-red-600"
+                                    disabled={deletingOrderId === order.id}
+                                  >
+                                    {deletingOrderId === order.id ? (
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                    )}
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
